@@ -334,7 +334,8 @@ public class Operations {
 				Operations underPage = new Operations();
 				List<String> reviewsLinks = underPage.getLinksReview(doc.get());
 				List<Map<String, Object>> reviewsInfo = underPage.getStatisticsInParalell(reviewsLinks, Operations.CountReviews.REVIEW);
-				writeToFileReview(reviewsInfo, "cochrane_reviews.txt");
+				writeToFileReview(reviewsInfo, (String)map.get(NAME), "cochrane_reviews.txt");
+				System.out.println((String)map.get(NAME) + " is written to file");
 			}	else{
 				map = new HashMap<String, Object>();
 			}
@@ -413,13 +414,13 @@ public class Operations {
 	     }
 	}
 	
-	public static void writeToFileReview(List<Map<String, Object>> countReviews, String filename) {
+	public static void writeToFileReview(List<Map<String, Object>> countReviews, String nameOfTopic, String filename) {
 		 try(final BufferedWriter bf = new BufferedWriter(new FileWriter(filename, true))){
 			 bf.write("\r\n");
 			 countReviews.forEach(elem -> {
 				if(elem.containsKey(TITLE) && elem.containsKey(AUTHORS) && elem.containsKey(DATE)){
 					try {
-						bf.write(elem.get(LINK) + " | " + elem.get(TITLE) + " | " 
+						bf.write(elem.get(LINK) + " | " + nameOfTopic + " | " + elem.get(TITLE) + " | " 
 							+ ((List<String>)elem.get(AUTHORS)).toString() + " | " + elem.get(DATE) + "\r\n");
 					} catch (IOException e) {
 						e.printStackTrace();

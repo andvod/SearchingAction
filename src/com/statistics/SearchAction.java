@@ -23,7 +23,7 @@ public class SearchAction {
 			
 			String filename = "cochrane_reviews.txt";
 			Operations.writeToFile(filename);
-			List<Map<String, Object>> countReviews = statistics.getStatisticsInParalell(links, Operations.CountReviews.TOPIC, 1);
+			List<Map<String, Object>> countReviews = statistics.getStatisticsInParalell(links, Operations.CountReviews.TOPIC);
 	//		for(String link : links){
 	//			countReviews.put(link, (statistics.getCountReviews(link)));
 	//		}
