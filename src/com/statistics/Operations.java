@@ -14,9 +14,12 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.text.DateFormatSymbols;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
@@ -33,7 +36,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.script.Invocable;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -179,7 +182,8 @@ public class Operations {
 	
 	public Optional<Document> getDocument(String url){
 		AtomicInteger attempts = new AtomicInteger(0);
-		url = addResultPerPage(url);
+		url = Operations.replaceUrl(url, "resultPerPage=[0-9]*", "resultPerPage=100");
+		url = Operations.replaceUrl(url, "isWordVariations=*", "");
 		Optional<Document> doc = Optional.empty();
 		while (attempts.getAndIncrement() < 10){
 			try {
@@ -197,14 +201,15 @@ public class Operations {
 		return doc;
 	}
 	
-	private String addResultPerPage(String url){
-		Pattern p = Pattern.compile("resultPerPage=[0-9]*");
+	private static String replaceUrl(String url, String regex, String replaceTo){
+		Pattern p = Pattern.compile("&" + regex);
         Matcher m = p.matcher(url);
         if(m.find())	{
-        	url = m.replaceAll("resultPerPage=100");
+        	if(replaceTo.equals(""))	url = m.replaceAll("");
+        	else	url = m.replaceAll("&" + replaceTo);
         }
-        else if(url.contains("?")){
-        	url = url.concat("&resultPerPage=100");
+        else if(url.contains("?") && !replaceTo.equals("")){
+        	url = url.concat("&" + replaceTo);
         }
         return url;
 	}
@@ -238,7 +243,7 @@ public class Operations {
 		return result;
 	}
 	
-	public Map<String, Object> getTopicInfo(Document doc){
+	public Map<String, Object> getReviewInfo(Document doc){
 		Map<String, Object> result = new HashMap<String, Object>();
 		String title = null;
 		try {
@@ -273,7 +278,7 @@ public class Operations {
 		
 		result.put(TITLE, title);
 		result.put(AUTHORS, authors);
-		result.put(DATE, date);
+		result.put(DATE, convertStringToLocalDate(date));
 		return result;
 	}
 
@@ -295,7 +300,6 @@ public class Operations {
 	
 	public List<Map<String, Object>> getStatisticsInParalell(List<String> links, String level, int nThreads) {
 		ForkJoinPool forkJoinPool = new ForkJoinPool(nThreads);
-	    forkJoinPool.awaitQuiescence(2, TimeUnit.SECONDS);
 	    List<Map<String, Object>> result = forkJoinPool.invoke(new CountReviews(links, 0, links.size(), level));
 	    return result;
 	}
@@ -332,7 +336,13 @@ public class Operations {
 				map = getCountReviews(doc.get());
 				
 				Operations underPage = new Operations();
+				Document document = doc.get();
 				List<String> reviewsLinks = underPage.getLinksReview(doc.get());
+				while(document.selectFirst(".pagination .pagination-next-link").selectFirst("a") != null){
+					String href = document.selectFirst(".pagination .pagination-next-link").getElementsByTag("a").attr("href");
+					document = getDocument(href).get();
+					reviewsLinks.addAll(underPage.getLinksReview(document));
+				}
 				List<Map<String, Object>> reviewsInfo = underPage.getStatisticsInParalell(reviewsLinks, Operations.CountReviews.REVIEW);
 				writeToFileReview(reviewsInfo, (String)map.get(NAME), "cochrane_reviews.txt");
 				System.out.println((String)map.get(NAME) + " is written to file");
@@ -358,7 +368,7 @@ public class Operations {
 			
 			Optional<Document> doc = getDocument(links.get(low));
 			if( doc.isPresent()){
-				map = getTopicInfo(doc.get());
+				map = getReviewInfo(doc.get());
 			}	else{
 				map = new HashMap<String, Object>();
 			}
@@ -440,5 +450,17 @@ public class Operations {
 		 catch(IOException e){
 	    	 System.out.println(e);
 	     }
+	}
+	
+	private static LocalDate convertStringToLocalDate(String date){
+		LocalDate localDate = null;
+		DateFormatSymbols dfs = new DateFormatSymbols(Locale.US);
+		String[] dateSplitted = date.split("Version published:")[1].trim().split(" ");
+		String[] monthes = dfs.getMonths();
+		for( int i = 0; i<monthes.length; i++){
+			if(monthes[i].equals(dateSplitted[1]))
+				localDate = LocalDate.of(Integer.parseInt(dateSplitted[2]), i+1, Integer.parseInt(dateSplitted[0]));
+		}
+		return localDate;
 	}
 }

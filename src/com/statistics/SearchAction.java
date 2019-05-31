@@ -1,7 +1,10 @@
 package com.statistics;
 
 import java.io.InputStreamReader;
+import java.text.DateFormatSymbols;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -23,7 +26,7 @@ public class SearchAction {
 			
 			String filename = "cochrane_reviews.txt";
 			Operations.writeToFile(filename);
-			List<Map<String, Object>> countReviews = statistics.getStatisticsInParalell(links, Operations.CountReviews.TOPIC);
+			List<Map<String, Object>> countReviews = statistics.getStatisticsInParalell(links.subList(1, 2), Operations.CountReviews.TOPIC);
 	//		for(String link : links){
 	//			countReviews.put(link, (statistics.getCountReviews(link)));
 	//		}
